@@ -1,0 +1,88 @@
+{
+  "equipmentId": "EPI-001",
+  "equipmentName": "EPI Cluster Tool",
+  "efem": {
+    "id": "EFEM1",
+    "loadPorts": [
+      { "id": "LP1", "foupIndex": 0, "slots": 25 },
+      { "id": "LP2", "foupIndex": 1, "slots": 25 },
+      { "id": "LP3", "foupIndex": 2, "slots": 25 }
+    ],
+    "aligner": {
+      "alignTimeSec": 4.4
+    },
+    "atmRobot": {
+      "id": "ATM1",
+      "arms": 1,
+      "fingersPerArm": 1,
+      "pickTimeSec": 6,
+      "placeTimeSec": 6,
+      "rotateTimeSec": 3,
+      "foupToAligner": {
+        "pickTimeSec": 2.3,
+        "rotateTimeSec": 3.2,
+        "placeTimeSec": 2.4
+      },
+      "alignerToLL": {
+        "pickTimeSec": 2.8,
+        "rotateTimeSec": 2.3,
+        "placeTimeSec": 6.6
+      }
+    }
+  },
+  "loadlocks": [
+    { "id": "LL1", "type": "BATCH", "capacity": 25, "pumpTimeSec": 126, "ventTimeSec": 168 },
+    { "id": "LL2", "type": "BATCH", "capacity": 25, "pumpTimeSec": 126, "ventTimeSec": 168 }
+  ],
+  "transferModules": [
+    {
+      "id": "TM1",
+      "robots": [
+        {
+          "id": "Robot1",
+          "arms": 1,
+          "fingersPerArm": 1,
+          "pickTimeSec": 6,
+          "placeTimeSec": 6,
+          "rotateTimeSec": 3,
+          "operations": {
+            "LL_TO_PRECLEAN": { "pickTimeSec": 16, "rotateTimeSec": 6, "placeTimeSec": 52 },
+            "PRECLEAN_TO_PT": { "pickTimeSec": 46, "rotateTimeSec": 6, "placeTimeSec": 25 },
+            "PT_TO_LL": { "pickTimeSec": 23, "rotateTimeSec": 6, "placeTimeSec": 8 }
+          }
+        }
+      ],
+      "connectedChambers": ["LL1", "LL2", "PreClean1", "PreClean2", "PT1", "PT2"]
+    },
+    {
+      "id": "TM2",
+      "robots": [
+        {
+          "id": "Robot2",
+          "arms": 1,
+          "fingersPerArm": 1,
+          "pickTimeSec": 6,
+          "placeTimeSec": 6,
+          "rotateTimeSec": 3,
+          "operations": {
+            "PT_TO_EPI": { "pickTimeSec": 22, "rotateTimeSec": 7, "placeTimeSec": 44 },
+            "EPI_TO_PT": { "pickTimeSec": 80, "rotateTimeSec": 7, "placeTimeSec": 25 }
+          }
+        }
+      ],
+      "connectedChambers": ["PT1", "PT2", "EPI1", "EPI2", "EPI3", "EPI4"]
+    }
+  ],
+  "chambers": [
+    { "id": "PreClean1", "type": "PRECLEAN" },
+    { "id": "PreClean2", "type": "PRECLEAN" },
+    { "id": "EPI1", "type": "EPI" },
+    { "id": "EPI2", "type": "EPI" },
+    { "id": "EPI3", "type": "EPI" },
+    { "id": "EPI4", "type": "EPI" }
+  ],
+  "passthroughs": [
+    { "id": "PT1", "slots": 2, "coolingStationSlot": 0 },
+    { "id": "PT2", "slots": 2, "coolingStationSlot": 1 }
+  ]
+}

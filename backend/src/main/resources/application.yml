@@ -1,0 +1,12 @@
+server:
+  port: 8080
+
+spring:
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+epi:
+  config:
+    device-path: ../conf/device.json
+    schedule-path: ../conf/schedule.json

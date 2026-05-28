@@ -1,0 +1,30 @@
+{
+  "name": "EPI_Production_Run",
+  "controlJobs": [
+    {
+      "id": "CJ1",
+      "name": "LP1 Full + LP2 Partial",
+      "mode": "serial",
+      "processJobs": [
+        {
+          "id": "PJ1",
+          "sequenceName": "DefaultSequence",
+          "wafers": {
+            "subsets": [
+              { "lp": "LP1", "wafers": ["1-25"] }
+            ]
+          }
+        },
+        {
+          "id": "PJ2",
+          "sequenceName": "DefaultSequence",
+          "wafers": {
+            "subsets": [
+              { "lp": "LP2", "wafers": ["3-10"] }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

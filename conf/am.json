@@ -1,0 +1,49 @@
+{
+  "name": "EPI Maintenance Tasks",
+  "tasks": [
+    {
+      "id": "ON_LOAD_CLEAN_EPI",
+      "name": "EPI OnLoad Clean",
+      "description": "Pre-CJ EPI chamber clean - executed once before first wafer per CJ",
+      "type": "ON_LOAD_CLEAN",
+      "cleanTimeSec": 457,
+      "gapTimeSec": 1,
+      "appliesTo": [
+        { "chamberType": "EPI" }
+      ]
+    },
+    {
+      "id": "1X_CLEAN_EPI",
+      "name": "EPI 1X Clean",
+      "description": "Pre-wafer EPI chamber clean - executed before each wafer",
+      "type": "PRE_PROCESS",
+      "cleanTimeSec": 457,
+      "gapTimeSec": 1,
+      "appliesTo": [
+        { "chamberType": "EPI" }
+      ]
+    },
+    {
+      "id": "ON_LOAD_CLEAN_PC",
+      "name": "PreClean OnLoad Clean",
+      "description": "Pre-CJ PreClean chamber clean - executed once before first wafer per CJ",
+      "type": "ON_LOAD_CLEAN",
+      "cleanTimeSec": 537,
+      "gapTimeSec": 1,
+      "appliesTo": [
+        { "chamberType": "PRECLEAN" }
+      ]
+    },
+    {
+      "id": "IDLE_PURGE_PC",
+      "name": "PreClean IdlePurge",
+      "description": "Idle purge when PreClean chamber idle longer than threshold",
+      "type": "IDLE_PURGE",
+      "cleanTimeSec": 123,
+      "idleThresholdSec": 180,
+      "appliesTo": [
+        { "chamberType": "PRECLEAN" }
+      ]
+    }
+  ]
+}

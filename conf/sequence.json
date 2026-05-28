@@ -1,0 +1,30 @@
+{
+  "name": "DefaultSequence",
+  "description": "Standard EPI process flow: wafer from FOUP through Aligner, BLL, PreClean, PT, EPI, Cooling back to FOUP",
+  "flow": [
+    { "step": 1, "station": "LP", "action": "PICK", "robot": "ATM", "next": "ALIGNER" },
+    { "step": 2, "station": "ALIGNER", "action": "PROCESS", "timeKey": "alignTimeSec" },
+    { "step": 3, "station": "BLL", "action": "PLACE", "robot": "ATM", "from": "ALIGNER", "next": "PRECLEAN" },
+    { "step": 4, "station": "PRECLEAN", "action": "PROCESS", "recipeKey": "PRECLEAN", "next": "PT_FWD" },
+    { "step": 5, "station": "PT_FWD", "action": "TRANSIT", "robotIn": "Robot1", "robotOut": "Robot2", "next": "EPI" },
+    { "step": 6, "station": "EPI", "action": "PROCESS", "recipeKey": "EPI", "next": "PT_RET" },
+    { "step": 7, "station": "PT_RET", "action": "TRANSIT_COOLING", "robotIn": "Robot2", "robotOut": "Robot1", "next": "BLL_RET" },
+    { "step": 8, "station": "BLL_RET", "action": "RETURN", "next": "LP" },
+    { "step": 9, "station": "LP", "action": "DONE" }
+  ],
+  "robotOperations": {
+    "ATM": {
+      "LP_TO_ALIGNER": { "opKey": "foupToAligner" },
+      "ALIGNER_TO_BLL": { "opKey": "alignerToLL" }
+    },
+    "Robot1": {
+      "BLL_TO_PRECLEAN": { "opKey": "LL_TO_PRECLEAN" },
+      "PRECLEAN_TO_PT": { "opKey": "PRECLEAN_TO_PT" },
+      "PT_TO_BLL": { "opKey": "PT_TO_LL" }
+    },
+    "Robot2": {
+      "PT_TO_EPI": { "opKey": "PT_TO_EPI" },
+      "EPI_TO_PT": { "opKey": "EPI_TO_PT" }
+    }
+  }
+}

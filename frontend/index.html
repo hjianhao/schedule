@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EPI 半导体设备调度调试器</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #1a1a2e; color: #e0e0e0; }
+  </style>
+</head>
+<body>
+  <div id="error-overlay" style="display:none;position:fixed;top:0;left:0;right:0;background:#b71c1c;color:#fff;padding:12px;z-index:9999;font-family:monospace;font-size:12px;max-height:200px;overflow:auto"></div>
+  <div id="app"></div>
+  <script>
+    window.onerror = function(msg, url, line, col, err) {
+      var el = document.getElementById('error-overlay');
+      el.style.display = 'block';
+      el.innerHTML += '<div>' + msg + ' at line ' + line + '</div>';
+      return false;
+    };
+  </script>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+{
+  "recipes": {
+    "PRECLEAN": {
+      "avgProcessTimeSec": 280,
+      "processTimeVariationSec": 10,
+      "maxDwellTimeSec": 120
+    },
+    "EPI": {
+      "avgProcessTimeSec": 2120,
+      "processTimeVariationSec": 30,
+      "maxDwellTimeSec": 100
+    },
+    "PASSTHROUGH": {
+      "avgProcessTimeSec": 0,
+      "processTimeVariationSec": 0,
+      "maxDwellTimeSec": 300
+    },
+    "LOADLOCK": {
+      "avgProcessTimeSec": 0,
+      "processTimeVariationSec": 0,
+      "maxDwellTimeSec": 300
+    }
+  },
+  "waferFlow": ["FOUP", "LOADLOCK", "PRECLEAN", "PASSTHROUGH_FWD", "EPI", "PASSTHROUGH_RET", "LOADLOCK_RET", "FOUP_RET"],
+  "scheduling": {
+    "policy": "PRIORITY",
+    "targetWPH": 10,
+    "maxWafersInSystem": 12,
+    "waferStartIntervalSec": 0,
+    "dwellSafetyMarginSec": 40
+  },
+  "robot": {
+    "strategy": "SEQUENTIAL",
+    "swapEnabled": false,
+    "priorityReturnWafer": true
+  },
+  "timing": {
+    "loadlockPumpTimeSec": 126,
+    "loadlockVentTimeSec": 168,
+    "loadlockLoadTimeSec": 5,
+    "loadlockUnloadTimeSec": 5,
+    "passthroughTransferTimeSec": 3,
+    "coolingStationCoolTimeSec": 60
+  },
+  "simulation": {
+    "speed": 15,
+    "totalWafers": 25,
+    "timeStepMs": 1000
+  }
+}
