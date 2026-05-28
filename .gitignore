@@ -1,0 +1,29 @@
+# Build artifacts
+backend/target/
+*.jar
+*.class
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Claude
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Report outputs (generated at runtime)
+simulation_report.html
+EPI_Scheduler_Report.pptx
