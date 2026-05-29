@@ -27,7 +27,7 @@
     "targetWPH": 10,
     "maxWafersInSystem": 12,
     "waferStartIntervalSec": 0,
-    "dwellSafetyMarginSec": 40
+    "dwellSafetyMarginSec": 10
   },
   "robot": {
     "strategy": "SEQUENTIAL",

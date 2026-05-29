@@ -154,7 +154,7 @@ for each chamber with wafer:
 | 约束 | 值 | 说明 |
 |------|-----|------|
 | CoolingStation 冷却时间 | 60s | EPI 返回的 wafer 必须经过冷却槽 |
-| 安全裕度 (safety margin) | 40s | 在死锁预防的 forward-look 中使用的保守裕量 |
+| 安全裕度 (safety margin) | 10s | 在死锁预防的 forward-look 中使用的保守裕量。EPI 工艺波动仅 ~3s，10s 提供充足缓冲 |
 | BLL batch vent | 168s | 仅在 batch 内所有 wafer 返回后才开始 |
 
 ---
@@ -165,129 +165,61 @@ for each chamber with wafer:
 
 ### 5.1 device.json — 硬件拓扑
 
-```jsonc
-{
-  "equipmentName": "EPI Cluster Tool",
-  "equipmentId": "EPI-CT-001",
-  "efem": {
-    "loadPorts": [{"id": "LP1", "capacity": 25}, ...],
-    "aligner": {"alignTimeSec": 4.4},
-    "atmRobot": {
-      "id": "ATM1",
-      "arms": 1, "fingers": 1,
-      "pickTimeSec": 2.5, "rotateTimeSec": 3.5, "placeTimeSec": 3.0,
-      "foupToAligner": {"pickTimeSec": 2.3, "rotateTimeSec": 3.2, "placeTimeSec": 2.4},
-      "alignerToLL": {"pickTimeSec": 2.8, "rotateTimeSec": 2.3, "placeTimeSec": 6.6}
-    }
-  },
-  "loadlocks": [
-    {"id": "LL1", "type": "BATCH", "capacity": 25, "pumpTimeSec": 126, "ventTimeSec": 168}
-  ],
-  "transferModules": [
-    {
-      "id": "TM1",
-      "robots": [{
-        "id": "Robot1", "tmId": "TM1", "arms": 1, "fingers": 1,
-        "operations": {
-          "LL_TO_PRECLEAN": {"pickTimeSec": 16, "rotateTimeSec": 6, "placeTimeSec": 52},
-          "PRECLEAN_TO_PT": {"pickTimeSec": 46, "rotateTimeSec": 6, "placeTimeSec": 25},
-          "PT_TO_LL": {"pickTimeSec": 23, "rotateTimeSec": 6, "placeTimeSec": 8}
-        }
-      }]
-    },
-    {
-      "id": "TM2",
-      "robots": [{
-        "id": "Robot2", "tmId": "TM2", "arms": 1, "fingers": 1,
-        "operations": {
-          "PT_TO_EPI": {"pickTimeSec": 22, "rotateTimeSec": 7, "placeTimeSec": 44},
-          "EPI_TO_PT": {"pickTimeSec": 80, "rotateTimeSec": 7, "placeTimeSec": 25}
-        }
-      }]
-    }
-  ],
-  "chambers": [
-    {"id": "PreClean1", "type": "PRECLEAN"},
-    {"id": "PreClean2", "type": "PRECLEAN"},
-    {"id": "EPI1", "type": "EPI"}, ...
-  ],
-  "passthroughs": [
-    {"id": "PT1", "slots": 2, "coolingStationSlot": 0},  // PT1_S0 = cooling
-    {"id": "PT2", "slots": 2, "coolingStationSlot": 1}   // PT2_S1 = cooling
-  ]
-}
-```
+定义 EPI Cluster Tool 的完整硬件布局：腔室类型与数量、机械手参数、LoadPort 容量、Passthrough 槽位分配。
+
+**关键字段**：`efem`(大气环境/ATM/Aligner)、`loadlocks`(Batch LL)、`transferModules`(TM1/TM2 机械手及操作时间)、`chambers`(PreClean/EPI)、`passthroughs`(槽位数/冷却槽分配)。
+
+> 详细字段说明与完整 JSON 示例参见 **[device.md](conf/device.md)**。
 
 ### 5.2 schedule.json — 工艺与模拟参数
 
-```jsonc
-{
-  "recipes": {
-    "PRECLEAN": {"avgProcessTimeSec": 280, "processTimeVariationSec": 10, "maxDwellTimeSec": 120},
-    "EPI": {"avgProcessTimeSec": 2120, "processTimeVariationSec": 30, "maxDwellTimeSec": 100},
-    "PASSTHROUGH": {"avgProcessTimeSec": 0, "maxDwellTimeSec": 300},
-    "LOADLOCK": {"avgProcessTimeSec": 0, "maxDwellTimeSec": 300}
-  },
-  "scheduling": {
-    "policy": "PRIORITY",
-    "targetWPH": 10,
-    "maxWafersInSystem": 12,
-    "waferStartIntervalSec": 0,      // 0=auto-calc from EPI/EPI_count
-    "dwellSafetyMarginSec": 40
-  },
-  "timing": {
-    "loadlockPumpTimeSec": 126, "loadlockVentTimeSec": 168,
-    "loadlockLoadTimeSec": 5, "loadlockUnloadTimeSec": 5,
-    "passthroughTransferTimeSec": 3, "coolingStationCoolTimeSec": 60
-  },
-  "simulation": {
-    "speed": 15, "totalWafers": 25, "timeStepMs": 1000
-  }
-}
-```
+定义各腔室的工艺 recipe（时间/波动/最大驻留）、调度策略（wafer 启动间隔/安全裕度）、时序参数（LL Pump/Vent/Cooling）、模拟参数（速度/wafer 数）。
+
+**关键字段**：`recipes`(PRECLEAN/EPI/PASSTHROUGH/LOADLOCK)、`scheduling`(policy/waferStartIntervalSec/dwellSafetyMarginSec)、`timing`、`simulation`。
+
+> 详细字段说明与完整 JSON 示例参见 **[schedule.md](conf/schedule.md)**。
 
 ### 5.3 sequence.json — Wafer 流程定义
 
-9 步流程：`LP → Aligner → BLL → PreClean → PT_FWD → EPI → PT_RET → BLL_RET → LP`
+定义 wafer 从 FOUP 到返回 FOUP 的完整流转步骤。9 步流程：`LP → Aligner → BLL → PreClean → PT_FWD → EPI → PT_RET → BLL_RET → LP`。
 
 每步定义：step, station, action, robot (入站/出站), next, recipeKey。
 
-关键转移点：
-- Step 5 (PT_FWD): Robot1 (TM1) 放入, Robot2 (TM2) 取出 — **机械手交接**
-- Step 7 (PT_RET): Robot2 放入, Robot1 取出 — **带冷却**
+> 详细说明参见 **[sequence.md](conf/sequence.md)**。
 
 ### 5.4 job.json — 生产任务
 
-```jsonc
-{
-  "name": "EPI_Production_Run",
-  "controlJobs": [{
-    "id": "CJ1",
-    "mode": "serial",               // "serial" | "parallel"
-    "processJobs": [
-      {"id": "PJ1", "wafers": {"subsets": [{"lp": "LP1", "wafers": ["1-25"]}]}},
-      {"id": "PJ2", "wafers": {"subsets": [{"lp": "LP2", "wafers": ["3-10"]}]}}
-    ]
-  }]
-}
-```
+定义生产任务（Job）层级：`Job → ControlJob(CJ) → ProcessJob(PJ) → WaferSubset`。
 
-Wafer 命名格式：`W{LP#}.{wafer#}`（如 `W1.5`）。`parseWaferRange("3-10")` 生成 8 个 wafer。
+支持 `serial` 模式（PJ 顺序执行）。Wafer 编号格式支持单编号 `"5"` 和范围 `"1-25"`。命名规则：`W{LP_INDEX}.{SLOT_NUMBER}`。
+
+> 详细字段说明、模式说明与示例参见 **[job.md](conf/job.md)**。
 
 ### 5.5 am.json — Auto Maintenance
 
-```jsonc
-{
-  "tasks": [
-    {"id": "ON_LOAD_CLEAN_EPI",  "type": "ON_LOAD_CLEAN", "cleanTimeSec": 457, "appliesTo": [{"chamberType": "EPI"}]},
-    {"id": "1X_CLEAN_EPI",       "type": "PRE_PROCESS",   "cleanTimeSec": 457, "appliesTo": [{"chamberType": "EPI"}]},
-    {"id": "ON_LOAD_CLEAN_PC",   "type": "ON_LOAD_CLEAN", "cleanTimeSec": 537, "appliesTo": [{"chamberType": "PRECLEAN"}]},
-    {"id": "IDLE_PURGE_PC",      "type": "IDLE_PURGE",    "cleanTimeSec": 123, "idleThresholdSec": 180, "appliesTo": [{"chamberType": "PRECLEAN"}]}
-  ]
-}
+定义腔室的自动维护（AM）任务，三种类型：
+
+| 类型 | 触发时机 | 适用腔室 |
+|------|---------|---------|
+| `ON_LOAD_CLEAN` | CJ 启动时，每腔执行一次 | EPI、PRECLEAN |
+| `PRE_PROCESS` | 每片 wafer 工艺前 | EPI（1X Clean） |
+| `IDLE_PURGE` | 腔室空闲超过阈值 | PRECLEAN |
+
+调度器从 `appliesTo[].chamberType` 动态收集腔室类型，无硬编码。
+
+> 详细字段说明、触发逻辑与完整示例参见 **[am.md](conf/am.md)**。
+
+### 5.6 Profile 系统
+
+通过 `conf/context.json` 中的 `activeProfile` 字段选择配置集：
+
+```json
+{ "activeProfile": "sige-epi" }
 ```
 
-### 5.6 可配置项总览
+配置文件实际路径为 `conf/{activeProfile}/`，如 `conf/sige-epi/device.json`。切换 profile 只需修改 `context.json` 并 reload（`POST /api/config/reload`）。
+
+### 5.7 可配置项总览
 
 | 类别 | 可配置项 | 配置文件 |
 |------|---------|---------|
@@ -362,9 +294,16 @@ Wafer 命名格式：`W{LP#}.{wafer#}`（如 `W1.5`）。`parseWaferRange("3-10"
 ```
 epi/
 ├── conf/                     # JSON 配置文件
-│   ├── device.json, schedule.json, sequence.json
-│   ├── job.json, am.json
-│   └── *.md                  # 配置说明文档
+│   ├── context.json           # 当前 activeProfile
+│   ├── sige-epi/              # sige-epi 工艺配置集
+│   │   ├── device.json, schedule.json, sequence.json
+│   │   ├── job.json, am.json
+│   └── *.json                 # 默认配置（向后兼容）
+├── doc/                       # 项目文档
+│   ├── design.md              # 本设计文档
+│   └── conf/                  # 各配置文件的详细说明
+│       ├── device.md, schedule.md, sequence.md
+│       ├── job.md, am.md
 ├── backend/                  # Spring Boot
 │   └── src/main/java/com/epi/scheduler/
 │       ├── EpiSchedulerApplication.java
@@ -379,7 +318,6 @@ epi/
 │       ├── api/scheduler.js
 │       └── components/
 │           ├── ControlPanel.vue, ToolLayout.vue, GanttChart.vue
-├── doc/design.md             # 本设计文档
 ├── generate_report.py        # HTML 报告生成器 (~1340 行)
 ├── generate_ppt.py           # PPT 报告生成器 (~447 行)
 └── generate_images.py        # PNG 图片生成器 (~246 行)
@@ -427,37 +365,83 @@ scheduleTM1():
 
 ```
 scheduleTM2():
-  1. tryTM2EpiToPT()          // EPI done → PT ret
-  2. tryTM2PTToEpi()          // PT fwd → EPI
+  1. tryTM2EpiToPT()          // EPI done → PT ret（默认优先，避免 EPI dwell 超标）
+  2. tryTM2PTToEpi()          // PT fwd → EPI（含 Clean-Transport 重叠优化）
 ```
 
-### 7.4 死锁预防 — `canPullWaferFromLL()`
+#### 7.3.1 Clean-Transport 重叠优化
 
-前向预测（lookahead）的准入控制，防止系统进入死锁：
+1X Clean 时间是**确定性的**（从 am.json 读取，无随机波动），因此可以精确预测清洁完成时刻。
+当 EPI 腔处于 CLEANING 状态且剩余时间 ≤ PT→EPI 传输时间（73s）时，TM2 提前开始搬运 wafer，
+使 wafer 到达 EPI 腔时清洁刚好完成，gap 降至 0s。
+
+```
+tryTM2PTToEpi():
+  epi = findAvailableEpi()          // 优先选 IDLE 腔
+  IF epi == null:
+    epi = findEpiAboutToFinishClean()  // 次选即将完成清洁的腔（剩余 ≤73s）
+  IF epi == null → return false
+  
+  // ... 开始搬运，onComplete 时 chamber 已 IDLE
+
+findEpiAboutToFinishClean():
+  // 选 CLEANING 且 remainingTime ≤ PT→EPI_transport_time 的腔
+  // 优先选 remainingTime 最大的（最接近 73s），最大化重叠
+  return chambers.stream()
+    .filter(c => c.type=="EPI" && c.state==CLEANING && c.waferId==null && c.remainingTime <= transportTime)
+    .max(comparing(c.remainingTime))
+```
+
+**效果**：Clean 末尾 73s 与 TM2 传输完全重叠，消除 post-clean idle gap。确定性清洁时间（无随机波动）保证了此优化的安全性。
+
+### 7.4 死锁预防与 Entry Control — `canPullWaferFromLL()`
+
+前向预测（lookahead）的准入控制，决定何时从 LL 拉取新 wafer 进入真空侧。
 
 ```
 canPullWaferFromLL():
-  demand = PT_fwd_count + PreClean_busy_count + 1  // 即将进入系统的 wafer 需要的 EPI 槽位数
-  
-  // 1. Stagger check: 按 stagger interval 限制 wafer 启动频率
-  IF currentTime - lastWaferStartTime < staggerInterval → BLOCK
-  
-  // 2. 简单情况: IDLE + CLEANING 的 EPI 腔 >= demand → ALLOW
+  demand = PT_fwd_count + PreClean_busy_count + 1
+
+  // 1. 快速路径: IDLE + CLEANING 的 EPI 腔 >= demand → 立即允许
   available = EPI_idle + EPI_cleaning
-  IF available >= demand → ALLOW
-  
-  // 3. 未来预测: 正在 PROCESSING 的 EPI 腔中最先完成的 N 个
-  soonest_epi_completion[N] = 按 remainingTime 排序的 PROCESSING EPI 腔
-  epi_ready_in = soonest_epi_completion[demand - available]
-  
-  // 4. 等待窗口: 新 wafer 从 LL 到 EPI 的最长时间
-  max_wait = LL→PC_robot + PC_process + PC→PT_robot + PT_maxDwell - safetyMargin
-  
-  IF epi_ready_in <= max_wait → ALLOW
-  ELSE → BLOCK
+  IF available >= demand → ALLOW (更新 lastWaferStartTime)
+
+  // 2. Per-Chamber 动态时序: 预测下一个 EPI 腔的就绪时间，
+  //    反推最优拉 wafer 时刻，使 wafer 到达 PT 时恰好 Clean 还剩 73s。
+  nextReadyIn = getNextEpiReadyTime()        // 最快 EPI 腔还需多久完成 Clean
+  pipelineTransit = getPipelineTransitTime() // LL→PC→PT 最大耗时
+  transportTime = PT→EPI 传输时间 (73s)
+
+  // 理想等待时间: 让 wafer 在 Clean 结束前 73s 到达 PT
+  idealWait = nextReadyIn - pipelineTransit - transportTime
+
+  // Clamp: 不能快于 minStagger（防止管线溢出），不能慢于 staggerInterval
+  effectiveStagger = clamp(idealWait, minStagger, staggerInterval)
+
+  IF currentTime - lastWaferStartTime < effectiveStagger → BLOCK
+
+  // 3. 后备: 检查 PROCESSING 腔中最早完成的 N 个是否在 PT dwell 窗口内就绪
+  ...（同旧逻辑，使用 epiRemaining 排序 + maxWait 判断）
 ```
 
-**安全裕度 (safetyMargin = 40s)** 确保即使有传输延迟，dwell 也不会超标。
+**关键改进**：`getNextEpiReadyTime()` 为每个 EPI 腔独立预测就绪时间（基于实际 remainingTime），替代了全局固定 stagger。这消除了因 pipeline 相位偏移导致的 EPI3/EPI4 wafer 到达过晚问题。
+
+```
+getNextEpiReadyTime():
+  best = INF
+  FOR each EPI chamber:
+    IF IDLE && waferId==null:           readyIn = 0
+    ELSE IF CLEANING && waferId==null:  readyIn = remainingTime
+    ELSE IF PROCESSING:                 readyIn = remainingTime + cleanTime
+    best = min(best, readyIn)
+  RETURN best
+
+getPipelineTransitTime():
+  // LL→PC 传输 + PC 工艺(最坏情况) + PC→PT 传输
+  RETURN LL_TO_PC_time + (PC_avg + PC_variation) + PC_TO_PT_time
+```
+
+**minStagger** = `staggerInterval / 2`（≈313s），防止管线溢出。`staggerInterval` = `(EPI_process + EPI_clean - transportTime) / EPI_count` ≈ 626s。
 
 ### 7.5 前向压力控制 — `canMovePCToPT()`
 
@@ -473,18 +457,28 @@ canMovePCToPT():
   IF PreClean dwell 即将超标 → FORCE ALLOW（安全覆盖）
 ```
 
-### 7.6 Wafer 启动 Stagger
+### 7.6 可用 EPI 查找
 
+#### 7.6.1 `findAvailableEpi()` — IDLE 腔
+
+```java
+// 排除条件:
+//   - state != IDLE
+//   - waferId != null
+//   - awaitingOnloadClean.contains(id)  // 等待 OnLoadClean 的腔不可用
+// 优先选择: lastUsedTime 最小的（最久未使用，round-robin）
 ```
-staggerInterval = (EPI_process_time + EPI_clean_time) / EPI_chamber_count
-                = (2120 + 457) / 4 ≈ 644s
 
-IF currentTime - lastWaferStartTime < staggerInterval → 阻止新 wafer 进入
+#### 7.6.2 `findEpiAboutToFinishClean()` — 即将完成清洁的腔
+
+```java
+// 条件:
+//   - type == EPI
+//   - state == CLEANING
+//   - waferId == null
+//   - remainingTime <= PT→EPI_transport_time (73s)
+// 优先选择: remainingTime 最大的（最接近 73s = 最大重叠）
 ```
-
-目的：均匀分布 EPI 完成时间，避免多个 wafer 同时完成 EPI 导致 PT 返回路径拥塞。
-
-### 7.7 可用 EPI 查找 — `findAvailableEpi()`
 
 ```java
 // 排除条件:
@@ -494,13 +488,13 @@ IF currentTime - lastWaferStartTime < staggerInterval → 阻止新 wafer 进入
 // 优先选择: lastUsedTime 最小的（最久未使用）
 ```
 
-### 7.8 PT 槽分配策略
+### 7.7 PT 槽分配策略
 
 - **fwd 方向**（PreClean→EPI）：优先使用 **buffer 槽**（非 cooling 槽）
 - **ret 方向**（EPI→LL）：优先使用 **cooling 槽**
 - 目的：分离前向和返回流量，减少 PT 争夺
 
-### 7.9 BLL Batch 管理
+### 7.8 BLL Batch 管理
 
 ```
 LL 状态循环: IDLE → LOADING → PUMPING(126s) → READY → VENTING(168s) → DONE → UNLOADING(5s) → IDLE
@@ -511,7 +505,7 @@ checkBatchLLComplete():
   IF serial mode → currentPJIndex++（推进到下一个 PJ）
 ```
 
-### 7.10 数据自愈 — `healWaferLocations()`
+### 7.9 数据自愈 — `healWaferLocations()`
 
 ```
 for each wafer where location starts with "PT":
@@ -600,8 +594,9 @@ ChamberState 枚举:
 | **OnLoadClean 延迟计算 + wafer 计数器触发** | 首个腔用延迟公式对齐首片到达，后续腔按实际 wafer 流量触发，确保所有腔间隔均匀 |
 | **IdlePurge 纯空闲驱动** | 仅依赖 idle 时长，不依赖是否处理过 wafer |
 | **PURGING ≠ CLEANING** | 前端和甘特图清晰区分两种 AM 操作 |
-| **EpiStagger = (EPI+Clean)/4** | 考虑 1X Clean 时间的完整 EPI 周期 |
-| **安全裕度 40s** | 在死锁预防中提供保守缓冲 |
+| **Clean-Transport 重叠** | 1X Clean 时间确定性（无随机波动），在清洁末尾 73s 启动 PT→EPI 传输，gap 降至 0s |
+| **Per-Chamber 动态时序** | 替代全局固定 stagger。每个 EPI 腔独立预测就绪时间，反推最优拉 wafer 时刻，消除相位偏移导致的 gap 不一致 |
+| **安全裕度 10s** | EPI 工艺实际波动仅 ~3s，10s = 3x+ 缓冲，足够安全且减少不必要的等待 |
 | **HTML 报告嵌入 SVG 回放** | 无需服务器即可在浏览器中查看完整模拟过程 |
 
 ---
@@ -614,11 +609,12 @@ ChamberState 枚举:
 - **PreClean 腔**：按固定 stagger 间隔启动，每 tick 一个腔
 - 每次 CJ 每腔仅执行一次
 
-### 11.2 1X Clean
+### 11.2 1X Clean (PRE_PROCESS)
 
 - **仅 EPI 腔**：每当 EPI 腔完成工艺（wafer 被 TM2 取走至 PT）后立即启动
 - 如果后续没有 wafer 需要 EPI，则跳过（停止条件）
-- 目标 zero-gap：clean 完成后下一片 wafer 即刻进入
+- **Clean-Transport 重叠**：1X Clean 时间为确定值（am.json 配置，`Math.ceil(cleanTimeSec)`），无随机波动。调度器在清洁剩余 ≤73s（PT→EPI 传输时间）时提前启动 TM2 搬运，使 wafer 到达时清洁刚好完成，gap = 0s
+- 此优化对 OnLoadClean 同样生效（同为确定性时长）
 
 ### 11.3 IdlePurge
 
@@ -696,6 +692,8 @@ SimulationSnapshot {
 | IdlePurge 无限循环（虚假） | EPI OnLoadClean 缺失导致全局死锁，purge 为表象 | 修复 OnLoadClean 后恢复正常 |
 | EPI3/4 OnLoadClean-Wafer 间隔过大 | 固定时钟 stagger 不匹配实际管道节奏 | EPI2+ 改用 `wafersEnteredPreClean` 计数器触发 |
 | 机械手不可见 | 采样间隔 100s 太长(机械手动作 11-17s)，布局不匹配 | 降为 10s + 对齐运行界面 SVG 布局 |
+| Clean→Process gap 大且不一致 (73-135s) | (1) 固定 stagger 不区分腔室相位偏移 (2) 等待清洁完成后才启动传输 | (1) Per-Chamber 动态时序 (2) Clean-Transport 重叠优化 |
+| dwellSafetyMarginSec=40 过于保守 | EPI 实际波动仅 3s，40s 裕度过大导致不必要的等待 | 降至 10s，增大了 canPullWaferFromLL/canMovePCToPT 的准入窗口 |
 
 ---
 

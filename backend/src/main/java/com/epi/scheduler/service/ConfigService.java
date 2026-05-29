@@ -12,24 +12,13 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 
 @Service
 public class ConfigService {
 
-    @Value("${epi.config.device-path:../conf/device.json}")
-    private String deviceConfigPath;
-
-    @Value("${epi.config.schedule-path:../conf/schedule.json}")
-    private String scheduleConfigPath;
-
-    @Value("${epi.config.sequence-path:../conf/sequence.json}")
-    private String sequenceConfigPath;
-
-    @Value("${epi.config.job-path:../conf/job.json}")
-    private String jobConfigPath;
-
-    @Value("${epi.config.am-path:../conf/am.json}")
-    private String amConfigPath;
+    @Value("${epi.config.base-path:../conf}")
+    private String confBasePath;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private DeviceConfig deviceConfig;
@@ -37,34 +26,38 @@ public class ConfigService {
     private SequenceConfig sequenceConfig;
     private JobConfig jobConfig;
     private AmConfig amConfig;
+    private String activeProfile;
 
     @PostConstruct
     public void loadConfigs() throws IOException {
-        deviceConfig = objectMapper.readValue(new File(deviceConfigPath), DeviceConfig.class);
-        scheduleConfig = objectMapper.readValue(new File(scheduleConfigPath), ScheduleConfig.class);
-        File seqFile = new File(sequenceConfigPath);
+        File ctxFile = new File(confBasePath, "context.json");
+        activeProfile = "";
+        if (ctxFile.exists()) {
+            Map<String, String> ctx = objectMapper.readValue(ctxFile, Map.class);
+            activeProfile = ctx.getOrDefault("activeProfile", "");
+        }
+
+        String profilePath = confBasePath + File.separator + activeProfile;
+
+        deviceConfig = objectMapper.readValue(new File(profilePath, "device.json"), DeviceConfig.class);
+        scheduleConfig = objectMapper.readValue(new File(profilePath, "schedule.json"), ScheduleConfig.class);
+        File seqFile = new File(profilePath, "sequence.json");
         if (seqFile.exists()) sequenceConfig = objectMapper.readValue(seqFile, SequenceConfig.class);
-        File jobFile = new File(jobConfigPath);
+        File jobFile = new File(profilePath, "job.json");
         if (jobFile.exists()) jobConfig = objectMapper.readValue(jobFile, JobConfig.class);
-        File amFile = new File(amConfigPath);
+        File amFile = new File(profilePath, "am.json");
         if (amFile.exists()) amConfig = objectMapper.readValue(amFile, AmConfig.class);
     }
 
-    public DeviceConfig getDeviceConfig() {
-        return deviceConfig;
-    }
+    public String getActiveProfile() { return activeProfile; }
 
-    public ScheduleConfig getScheduleConfig() {
-        return scheduleConfig;
-    }
+    public DeviceConfig getDeviceConfig() { return deviceConfig; }
 
-    public SequenceConfig getSequenceConfig() {
-        return sequenceConfig;
-    }
+    public ScheduleConfig getScheduleConfig() { return scheduleConfig; }
 
-    public JobConfig getJobConfig() {
-        return jobConfig;
-    }
+    public SequenceConfig getSequenceConfig() { return sequenceConfig; }
+
+    public JobConfig getJobConfig() { return jobConfig; }
 
     public AmConfig getAmConfig() { return amConfig; }
 

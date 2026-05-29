@@ -10,6 +10,18 @@ public class SchedulerEngine {
     public enum SimStatus { IDLE, RUNNING, PAUSED, COMPLETED }
     public enum ChamberState { IDLE, LOADING, PUMPING, READY, PROCESSING, DONE, VENTING, UNLOADING, COOLING, CLEANING, PURGING }
 
+    // Operation keys — must match the keys in device.json transferModules[].robots[].operations
+    private static final String OP_LL_TO_PRECLEAN = "LL_TO_PRECLEAN";
+    private static final String OP_PRECLEAN_TO_PT = "PRECLEAN_TO_PT";
+    private static final String OP_PT_TO_LL = "PT_TO_LL";
+    private static final String OP_PT_TO_EPI = "PT_TO_EPI";
+    private static final String OP_EPI_TO_PT = "EPI_TO_PT";
+
+    // OnLoadClean offset: delay EPI1 OnLoadClean start by this many seconds
+    // to reduce the gap between clean completion and first wafer arrival.
+    // Empirically tuned; derived from typical pipeline queuing delays.
+    private static final int ONLOAD_CLEAN_EPI1_OFFSET_SEC = 120;
+
     private final DeviceConfig deviceConfig;
     private final ScheduleConfig scheduleConfig;
     private AmConfig amConfig = null;
@@ -440,7 +452,7 @@ public class SchedulerEngine {
     private void scheduleATM() {
         // Check if ALIGNER has a wafer ready to move to LL
         Chamber aligner = chambers.get("ALIGNER");
-        Robot atm = robots.get("ATM1");
+        Robot atm = findRobotByTmId("EFEM");
         if (atm == null || atm.busy) return;
 
         if (aligner != null && aligner.state == ChamberState.DONE && alignerDestLL != null) {
@@ -589,7 +601,7 @@ public class SchedulerEngine {
 
     // --- TM1 Scheduling (single arm, sequential) ---
     private void scheduleTM1() {
-        Robot robot = robots.get("Robot1");
+        Robot robot = findRobotByTmId("TM1");
         if (robot == null || robot.busy) return;
 
         if (tryTM1ReturnFromPT(robot)) return;
@@ -604,7 +616,7 @@ public class SchedulerEngine {
         if (ll == null) return false;
 
         String wId = ptRet.waferId;
-        int dur = getOpDur("Robot1", "PT_TO_LL");
+        int dur = getOpDurByTmId("TM1", OP_PT_TO_LL);
         robot.busy = true; robot.busyUntil = currentTimeSec + dur;
         robot.currentAction = "PT→LL: " + wId; robot.armWaferId = wId;
         robot.sourceChamber = ptRet.id; robot.targetChamber = ll.id;
@@ -634,7 +646,7 @@ public class SchedulerEngine {
         if (!canMovePCToPT()) return false;
 
         String wId = pcDone.waferId;
-        int dur = getOpDur("Robot1", "PRECLEAN_TO_PT");
+        int dur = getOpDurByTmId("TM1", OP_PRECLEAN_TO_PT);
         robot.busy = true; robot.busyUntil = currentTimeSec + dur;
         robot.currentAction = "PC→PT: " + wId; robot.armWaferId = wId;
         robot.sourceChamber = pcDone.id; robot.targetChamber = pt.id;
@@ -666,7 +678,7 @@ public class SchedulerEngine {
         String wId = getNextUnprocessedWafer(ll);
         if (wId == null) return false;
 
-        int dur = getOpDur("Robot1", "LL_TO_PRECLEAN");
+        int dur = getOpDurByTmId("TM1", OP_LL_TO_PRECLEAN);
         int processTime = getProcessTime("PRECLEAN");
         robot.busy = true; robot.busyUntil = currentTimeSec + dur;
         robot.currentAction = "LL→PC: " + wId; robot.armWaferId = wId;
@@ -692,7 +704,7 @@ public class SchedulerEngine {
 
     // --- TM2 Scheduling ---
     private void scheduleTM2() {
-        Robot robot = robots.get("Robot2");
+        Robot robot = findRobotByTmId("TM2");
         if (robot == null || robot.busy) return;
 
         if (tryTM2EpiToPT(robot)) return;
@@ -706,7 +718,7 @@ public class SchedulerEngine {
         if (pt == null) return false;
 
         String wId = epiDone.waferId;
-        int dur = getOpDur("Robot2", "EPI_TO_PT");
+        int dur = getOpDurByTmId("TM2", OP_EPI_TO_PT);
         robot.busy = true; robot.busyUntil = currentTimeSec + dur;
         robot.currentAction = "EPI→PT: " + wId; robot.armWaferId = wId;
         robot.sourceChamber = epiDone.id; robot.targetChamber = pt.id;
@@ -749,11 +761,13 @@ public class SchedulerEngine {
     private boolean tryTM2PTToEpi(Robot robot) {
         Chamber ptFwd = findPTWithForwardWafer();
         if (ptFwd == null) return false;
-        Chamber epi = findAvailableEpi();
-        if (epi == null) return false;
+        Chamber epiCandidate = findAvailableEpi();
+        if (epiCandidate == null) epiCandidate = findEpiAboutToFinishClean();
+        if (epiCandidate == null) return false;
+        final Chamber epi = epiCandidate;
 
         String wId = ptFwd.waferId;
-        int dur = getOpDur("Robot2", "PT_TO_EPI");
+        int dur = getOpDurByTmId("TM2", OP_PT_TO_EPI);
         int processTime = getProcessTime("EPI");
         robot.busy = true; robot.busyUntil = currentTimeSec + dur;
         robot.currentAction = "PT→EPI: " + wId; robot.armWaferId = wId;
@@ -885,6 +899,20 @@ public class SchedulerEngine {
                 .min(Comparator.comparingInt(c -> c.lastUsedTime)).orElse(null);
     }
 
+    /** Find a CLEANING EPI chamber whose remaining clean time is within TM2 transport
+     *  time, so that transport can overlap with the tail of the clean and the wafer
+     *  arrives exactly when the chamber becomes IDLE.
+     *  Picks the chamber with the largest remaining time (closest to transportTime)
+     *  to maximize clean-transport overlap and minimize post-clean idle gap. */
+    private Chamber findEpiAboutToFinishClean() {
+        int transportTime = getOpDurByTmId("TM2", OP_PT_TO_EPI);
+        return chambers.values().stream()
+                .filter(c -> c.type.equals("EPI") && c.state == ChamberState.CLEANING
+                        && c.waferId == null && c.remainingTime <= transportTime)
+                .max(Comparator.comparingInt(c -> c.remainingTime))
+                .orElse(null);
+    }
+
     private Chamber findEpiDone() {
         return chambers.values().stream()
                 .filter(c -> c.type.equals("EPI") && c.state == ChamberState.DONE)
@@ -894,6 +922,41 @@ public class SchedulerEngine {
                 })).orElse(null);
     }
 
+    /** Predict when the soonest EPI chamber will be ready (IDLE, clean complete)
+     *  for a new wafer, in seconds from now. */
+    private int getNextEpiReadyTime() {
+        int epiCleanTime = amConfig != null ? (int) Math.ceil(amConfig.getCleanTimeForChamber("EPI")) : 0;
+        int best = Integer.MAX_VALUE;
+        for (Chamber c : chambers.values()) {
+            if (!c.type.equals("EPI")) continue;
+            if (awaitingOnloadClean.contains(c.id)) continue;
+            int readyIn;
+            if (c.state == ChamberState.IDLE && c.waferId == null) {
+                readyIn = 0;
+            } else if (c.state == ChamberState.CLEANING && c.waferId == null) {
+                readyIn = c.remainingTime;
+            } else if (c.state == ChamberState.PROCESSING) {
+                readyIn = c.remainingTime + epiCleanTime;
+            } else {
+                continue;
+            }
+            if (readyIn < best) best = readyIn;
+        }
+        return best == Integer.MAX_VALUE ? 99999 : best;
+    }
+
+    /** Pipeline transit time from LL pull decision to wafer arriving in PT fwd.
+     *  LL→PC transport + PC process (worst case) + PC→PT transport. */
+    private int getPipelineTransitTime() {
+        int llToPc = getOpDurByTmId("TM1", OP_LL_TO_PRECLEAN);
+        int pcToPt = getOpDurByTmId("TM1", OP_PRECLEAN_TO_PT);
+        ScheduleConfig.RecipeConfig pcRecipe = scheduleConfig.getRecipes().get("PRECLEAN");
+        int pcMax = pcRecipe != null
+                ? pcRecipe.getAvgProcessTimeSec() + pcRecipe.getProcessTimeVariationSec()
+                : 290;
+        return llToPc + pcMax + pcToPt;
+    }
+
     private boolean downstreamFull() {
         long busyEpi = chambers.values().stream()
                 .filter(c -> c.type.equals("EPI") && (c.state == ChamberState.PROCESSING || c.state == ChamberState.DONE)).count();
@@ -901,7 +964,8 @@ public class SchedulerEngine {
                 .filter(c -> c.type.equals("PASSTHROUGH") && c.waferId != null && c.forwardDirection).count();
         long busyPC = chambers.values().stream()
                 .filter(c -> c.type.equals("PRECLEAN") && (c.state == ChamberState.PROCESSING || c.state == ChamberState.DONE)).count();
-        return busyEpi + occPT + busyPC >= 8;
+        long epiTotal = deviceConfig.getChambers().stream().filter(c -> "EPI".equals(c.getType())).count();
+        return busyEpi + occPT + busyPC >= epiTotal * 2;
     }
 
     private boolean canPullWaferFromLL() {
@@ -915,14 +979,14 @@ public class SchedulerEngine {
 
         int demand = ptFwdCount + pcBusy + 1;
 
-        // Uniform stagger to match EPI throughput
         long epiCount = deviceConfig.getChambers().stream().filter(c -> "EPI".equals(c.getType())).count();
         ScheduleConfig.RecipeConfig epiRecipe = scheduleConfig.getRecipes().get("EPI");
         int epiTime = epiRecipe.getAvgProcessTimeSec();
         double cleanTime = amConfig != null ? amConfig.getCleanTimeForChamber("EPI") : 0;
-        int totalCycle = epiTime + (int) Math.ceil(cleanTime);
-        int staggerInterval = (int)(totalCycle / epiCount);
-        if (currentTimeSec - lastWaferStartTime < staggerInterval) return false;
+        // Effective cycle accounts for PT→EPI transport overlapping with clean tail
+        int transportTime = getOpDurByTmId("TM2", OP_PT_TO_EPI);
+        int totalCycle = epiTime + (int) Math.ceil(cleanTime) - transportTime;
+        int staggerInterval = Math.max(1, (int)(totalCycle / epiCount));
 
         // Count IDLE + CLEANING chambers as available
         long epiIdle = chambers.values().stream()
@@ -936,6 +1000,24 @@ public class SchedulerEngine {
             lastWaferStartTime = currentTimeSec;
             return true;
         }
+
+        // Per-chamber dynamic stagger: predict when the next EPI chamber will be
+        // ready and time the wafer pull so it arrives at PT exactly when the clean
+        // overlap window opens (clean_remaining = transportTime).
+        int nextReadyIn = getNextEpiReadyTime();
+        int pipelineTransit = getPipelineTransitTime();
+        // Wafer pulled now arrives at PT in pipelineTransit seconds.
+        // Target: arrive when clean_remaining = transportTime, i.e., at
+        // (now + nextReadyIn - transportTime).
+        // So: pipelineTransit >= nextReadyIn - transportTime means wafer arrives
+        // on time or late. If late, pull ASAP. If early, wait.
+        int idealWait = Math.max(0, nextReadyIn - pipelineTransit - transportTime);
+        // Clamp to staggerInterval so we never wait longer than the uniform rate
+        int effectiveStagger = Math.min(idealWait, staggerInterval);
+        // But never pull faster than half the stagger interval (respect LL/PC pipeline)
+        int minStagger = Math.max(1, staggerInterval / 2);
+        effectiveStagger = Math.max(effectiveStagger, minStagger);
+        if (currentTimeSec - lastWaferStartTime < effectiveStagger) return false;
 
         List<Integer> epiRemaining = chambers.values().stream()
                 .filter(c -> c.type.equals("EPI") && c.state == ChamberState.PROCESSING)
@@ -951,8 +1033,8 @@ public class SchedulerEngine {
         ScheduleConfig.RecipeConfig pcRecipe = scheduleConfig.getRecipes().get("PRECLEAN");
         int precleanTime = pcRecipe.getAvgProcessTimeSec() + pcRecipe.getProcessTimeVariationSec();
         int ptMaxDwell = scheduleConfig.getRecipes().get("PASSTHROUGH").getMaxDwellTimeSec();
-        int robotTimeLLtoPC = getOpDur("Robot1", "LL_TO_PRECLEAN");
-        int robotTimePCtoPT = getOpDur("Robot1", "PRECLEAN_TO_PT");
+        int robotTimeLLtoPC = getOpDurByTmId("TM1", OP_LL_TO_PRECLEAN);
+        int robotTimePCtoPT = getOpDurByTmId("TM1", OP_PRECLEAN_TO_PT);
 
         int safetyMargin = scheduleConfig.getScheduling().getDwellSafetyMarginSec();
         int maxWait = robotTimeLLtoPC + precleanTime + robotTimePCtoPT + ptMaxDwell - safetyMargin;
@@ -1013,7 +1095,7 @@ public class SchedulerEngine {
         Chamber pcDone = findPreCleanDone();
         if (pcDone != null) {
             int pcDwell = currentTimeSec - pcDone.processStartTime - pcDone.totalTime;
-            int robotTime = getOpDur("Robot1", "PRECLEAN_TO_PT");
+            int robotTime = getOpDurByTmId("TM1", OP_PRECLEAN_TO_PT);
             int pcMaxDwell = scheduleConfig.getRecipes().get("PRECLEAN").getMaxDwellTimeSec();
             if (pcDwell + robotTime >= pcMaxDwell) return true;
         }
@@ -1060,11 +1142,21 @@ public class SchedulerEngine {
                 }
             }
         }
-        return 6; // default
+        return 6; // fallback when robot config is missing
     }
 
     private int getOpDur(String robotId, String opKey) {
         return (int) Math.ceil(getOpTime(robotId, opKey, "total"));
+    }
+
+    /** Like getOpDur but finds the robot by its transfer module ID instead of robot ID. */
+    private int getOpDurByTmId(String tmId, String opKey) {
+        for (DeviceConfig.TransferModuleConfig tm : deviceConfig.getTransferModules()) {
+            if (tm.getId().equals(tmId) && !tm.getRobots().isEmpty()) {
+                return getOpDur(tm.getRobots().get(0).getId(), opKey);
+            }
+        }
+        return 0;
     }
 
     private int getAtmXferFoupToAligner() {
@@ -1091,6 +1183,13 @@ public class SchedulerEngine {
         return 15;
     }
 
+    private Robot findRobotByTmId(String tmId) {
+        for (Robot r : robots.values()) {
+            if (r.tmId.equals(tmId)) return r;
+        }
+        return null;
+    }
+
     private Wafer findWafer(String id) {
         if (id == null) return null;
         return wafers.stream().filter(w -> w.id.equals(id)).findFirst().orElse(null);
@@ -1105,8 +1204,17 @@ public class SchedulerEngine {
 
     private void triggerOnLoadClean() {
         if (amConfig == null) return;
-        // Handle all chamber types with OnLoadClean tasks
-        for (String chType : new String[]{"EPI", "PRECLEAN"}) {
+        // Dynamically discover chamber types from amConfig ON_LOAD_CLEAN tasks
+        Set<String> types = new LinkedHashSet<>();
+        for (AmConfig.MaintenanceTask task : amConfig.getTasks()) {
+            if ("ON_LOAD_CLEAN".equals(task.getType()) && task.getAppliesTo() != null) {
+                for (Map<String, String> a : task.getAppliesTo()) {
+                    String ct = a.get("chamberType");
+                    if (ct != null) types.add(ct);
+                }
+            }
+        }
+        for (String chType : types) {
             double onLoadTime = amConfig.getOnLoadCleanTime(chType);
             if (onLoadTime <= 0) continue;
             triggerOnLoadCleanForType(chType, onLoadTime);
@@ -1146,12 +1254,12 @@ public class SchedulerEngine {
                         ? scheduleConfig.getRecipes().get("PRECLEAN").getAvgProcessTimeSec()
                           + scheduleConfig.getRecipes().get("PRECLEAN").getProcessTimeVariationSec()
                         : 280;
-                int transportTime = getOpDur("Robot1", "LL_TO_PRECLEAN")
-                        + getOpDur("Robot1", "PRECLEAN_TO_PT")
-                        + getOpDur("Robot2", "PT_TO_EPI");
+                int transportTime = getOpDurByTmId("TM1", OP_LL_TO_PRECLEAN)
+                        + getOpDurByTmId("TM1", OP_PRECLEAN_TO_PT)
+                        + getOpDurByTmId("TM2", OP_PT_TO_EPI);
                 int arrivalEstimate = pcOnload + (int) Math.ceil(purgeThreshold + purgeTime)
                         + pcProcess + transportTime;
-                int minStartTime = Math.max(0, arrivalEstimate - onloadTimeCeil + 120);
+                int minStartTime = Math.max(0, arrivalEstimate - onloadTimeCeil + ONLOAD_CLEAN_EPI1_OFFSET_SEC);
                 if (currentTimeSec < minStartTime) return;
             } else {
                 // Subsequent EPI chambers: trigger when enough wafers have entered PreClean
@@ -1246,7 +1354,17 @@ public class SchedulerEngine {
 
     private void triggerIdlePurge() {
         if (amConfig == null) return;
-        for (String chType : new String[]{"PRECLEAN"}) {
+        // Dynamically discover chamber types from amConfig IDLE_PURGE tasks
+        Set<String> purgeTypes = new LinkedHashSet<>();
+        for (AmConfig.MaintenanceTask task : amConfig.getTasks()) {
+            if ("IDLE_PURGE".equals(task.getType()) && task.getAppliesTo() != null) {
+                for (Map<String, String> a : task.getAppliesTo()) {
+                    String ct = a.get("chamberType");
+                    if (ct != null) purgeTypes.add(ct);
+                }
+            }
+        }
+        for (String chType : purgeTypes) {
             double purgeTime = amConfig.getIdlePurgeTime(chType);
             double threshold = amConfig.getIdlePurgeThreshold(chType);
             if (purgeTime <= 0 || threshold <= 0) continue;

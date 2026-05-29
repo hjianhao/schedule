@@ -294,7 +294,9 @@ footer{text-align:center;color:#555;margin-top:36px;font-size:11px}
         sb.append("<footer>EPI Scheduler v1.0 | 报告自动生成 | 总事件: ").append(events.size()).append(" 条</footer>\n");
         sb.append("</body>\n</html>");
 
-        File outFile = new File("../simulation_report.html");
+        File outDir = new File("../result");
+        outDir.mkdirs();
+        File outFile = new File(outDir, "simulation_report.html");
         try (FileWriter fw = new FileWriter(outFile)) {
             fw.write(sb.toString());
         }

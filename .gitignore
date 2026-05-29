@@ -24,6 +24,5 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Report outputs (generated at runtime)
-simulation_report.html
-EPI_Scheduler_Report.pptx
+# Test, analysis & report outputs
+result/

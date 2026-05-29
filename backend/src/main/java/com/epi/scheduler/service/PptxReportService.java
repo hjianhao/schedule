@@ -324,7 +324,7 @@ public class PptxReportService {
         addKeyPointBox(slide, "📂 查看详细结果",
                 "报告文件: simulation_report.html（自包含，无需服务器）\n双击用浏览器打开即可查看全部统计数据、甘特图、Wafer 历史、SVG 动画回放",
                 4.5, 0.85);
-        File reportFile = new File("../simulation_report.html");
+        File reportFile = new File("../result/simulation_report.html");
         if (reportFile.exists()) {
             double sizeMb = reportFile.length() / (1024.0 * 1024);
             addBodyLines(slide, new String[]{
@@ -390,7 +390,9 @@ public class PptxReportService {
         }, 0.9, 11);
         addFooter(slide);
 
-        File outFile = new File("../EPI_Scheduler_Report.pptx");
+        File outDir = new File("../result");
+        outDir.mkdirs();
+        File outFile = new File(outDir, "EPI_Scheduler_Report.pptx");
         try (FileOutputStream fos = new FileOutputStream(outFile)) {
             ppt.write(fos);
         }
