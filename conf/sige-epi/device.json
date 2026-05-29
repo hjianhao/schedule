@@ -1,6 +1,6 @@
 {
   "equipmentId": "EPI-001",
-  "equipmentName": "EPI Cluster Tool",
+  "equipmentName": "Cluster Tool",
   "efem": {
     "id": "EFEM1",
     "loadPorts": [

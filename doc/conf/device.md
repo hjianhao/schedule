@@ -1,6 +1,6 @@
 # device.json — 硬件拓扑配置
 
-定义 EPI Cluster Tool 的完整硬件布局：腔室类型与数量、机械手参数、LoadPort 容量、Passthrough 槽位分配。
+定义 Cluster Tool 的完整硬件布局：腔室类型与数量、机械手参数、LoadPort 容量、Passthrough 槽位分配。
 
 ---
 
@@ -216,7 +216,7 @@ PT1_S0 和 PT2_S1 为冷却槽，其余为 buffer 槽。
 ```json
 {
   "equipmentId": "EPI-001",
-  "equipmentName": "EPI Cluster Tool",
+  "equipmentName": "Cluster Tool",
   "efem": {
     "id": "EFEM1",
     "loadPorts": [

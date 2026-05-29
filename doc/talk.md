@@ -1,4 +1,4 @@
-# 对话记录 — EPI Cluster Tool 调度模拟器
+# 对话记录 — Cluster Tool 调度模拟器
 
 > 从项目初始化到最终交付的完整对话记录。  
 > 记录用户（您）提出的需求和我（AI）执行的任务，便于后续回顾和接力开发。
@@ -8,7 +8,7 @@
 ## 第一阶段：基础框架搭建（早期会话）
 
 ### 需求
-构建一个半导体 EPI Cluster Tool 晶圆调度模拟器，满足：
+构建一个半导体 Cluster Tool 晶圆调度模拟器，满足：
 - 单臂单指机器人（TM1, TM2, ATM），无原子 Swap
 - 刚性最大驻留约束：PreClean 120s, EPI 100s, PT 300s
 - CoolingStation 60s 冷却逻辑

@@ -66,7 +66,7 @@ public class PptxReportService {
         // === Slide 1: Title ===
         var slide = ppt.createSlide();
         setBg(slide, DARK_BG);
-        addTextBox(slide, "EPI Cluster Tool 调度仿真系统", 1.8, 36, CYAN, true);
+        addTextBox(slide, "Cluster Tool 调度仿真系统", 1.8, 36, CYAN, true);
         addTextBox(slide, "半导体外延生长集群设备 · 晶圆调度优化与全流程仿真", 2.7, 16, GRAY, false);
 
         var tb = slide.createTextBox();
@@ -93,7 +93,7 @@ public class PptxReportService {
         addSectionHeader(slide, "01", "项目概述与目标");
         addBodyLines(slide, new String[]{
                 "📌 项目目标",
-                "  • 完整模拟 EPI Cluster Tool（外延生长集群设备）的晶圆流转全流程",
+                "  • 完整模拟 Cluster Tool（外延生长集群设备）的晶圆流转全流程",
                 "  • 优化调度策略，在满足所有工艺约束的前提下最大化晶圆产出（WPH）",
                 "  • 纯配置驱动，所有设备/工艺/维护参数均可通过 JSON 文件调整",
                 "",
@@ -373,7 +373,7 @@ public class PptxReportService {
         addSectionHeader(slide, "14", "总结与展望");
         addBodyLines(slide, new String[]{
                 "✅ 已完成功能",
-                "  • 完整的 EPI Cluster Tool 离散事件仿真调度引擎（~1490 行核心代码）",
+                "  • 完整的 Cluster Tool 离散事件仿真调度引擎（~1490 行核心代码）",
                 "  • 双槽位 PT + CoolingStation 冷却逻辑 + 通道分离策略",
                 "  • 时间感知前瞻死锁预防（三层防护：Stagger / EPI 容量 / PT 前向压力）",
                 "  • AM 完整集成（OnLoadClean + 1X Clean + IdlePurge，状态/甘特图区分）",
@@ -463,7 +463,7 @@ public class PptxReportService {
     }
 
     static void addFooter(XSLFSlide slide) {
-        addFooter(slide, "EPI Cluster Tool 调度仿真系统");
+        addFooter(slide, "Cluster Tool 调度仿真系统");
     }
 
     static void addBodyLines(XSLFSlide slide, String[] lines, double topInches, int fontSize) {

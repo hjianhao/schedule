@@ -179,7 +179,7 @@ public class ReportService {
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>EPI Cluster Tool 模拟报告</title>
+<title>Cluster Tool 模拟报告</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:Segoe UI,Microsoft YaHei,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:20px}
@@ -220,7 +220,7 @@ footer{text-align:center;color:#555;margin-top:36px;font-size:11px}
 """);
 
         // Title
-        sb.append("<h1>EPI Cluster Tool 模拟报告</h1>\n");
+        sb.append("<h1>Cluster Tool 模拟报告</h1>\n");
         sb.append("<p class=\"subtitle\">设备: ").append(device.getEquipmentName())
           .append(" (").append(device.getEquipmentId()).append(") | 模拟时长: ")
           .append(formatTime(simTime)).append(" | 状态: ").append(state.getStatus()).append("</p>\n");

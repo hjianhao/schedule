@@ -1,4 +1,4 @@
-# EPI Cluster Tool 调度模拟器 — 设计文档
+# Cluster Tool 调度模拟器 — 设计文档
 
 > **目标读者**：AI Agent / LLM / 后续开发者  
 > **编写原则**：结构化的需求、约束、架构、算法描述，减少歧义，便于 AI 理解和维护
@@ -27,7 +27,7 @@
 
 ## 1. 项目概述
 
-**EPI Cluster Tool Scheduler** 是一个半导体集群设备（Cluster Tool）的离散事件模拟调度器。
+**Cluster Tool Scheduler** 是一个半导体集群设备（Cluster Tool）的离散事件模拟调度器。
 
 - **设备类型**：EPI（外延生长）Cluster Tool
 - **核心目标**：在满足硬性最大驻留时间（Max Dwell Time）约束的前提下，最大化晶圆吞吐量（WPH）
@@ -165,7 +165,7 @@ for each chamber with wafer:
 
 ### 5.1 device.json — 硬件拓扑
 
-定义 EPI Cluster Tool 的完整硬件布局：腔室类型与数量、机械手参数、LoadPort 容量、Passthrough 槽位分配。
+定义 Cluster Tool 的完整硬件布局：腔室类型与数量、机械手参数、LoadPort 容量、Passthrough 槽位分配。
 
 **关键字段**：`efem`(大气环境/ATM/Aligner)、`loadlocks`(Batch LL)、`transferModules`(TM1/TM2 机械手及操作时间)、`chambers`(PreClean/EPI)、`passthroughs`(槽位数/冷却槽分配)。
 

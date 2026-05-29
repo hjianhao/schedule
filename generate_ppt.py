@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate human-oriented PPTX report for EPI Cluster Tool Scheduler."""
+"""Generate human-oriented PPTX report for Cluster Tool Scheduler."""
 
 import json
 import urllib.request
@@ -155,7 +155,7 @@ def add_table(slide, headers, rows, top, left=Inches(0.7), width=Inches(8.5), fo
             cell.fill.fore_color.rgb = bg
     return table_shape
 
-def add_footer(slide, text="EPI Cluster Tool 调度仿真系统"):
+def add_footer(slide, text="Cluster Tool 调度仿真系统"):
     txBox = slide.shapes.add_textbox(Inches(0.5), Inches(7.0), Inches(9), Inches(0.3))
     tf = txBox.text_frame
     p = tf.paragraphs[0]
@@ -205,7 +205,7 @@ def main():
     # ====== Slide 1: Title ======
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     set_slide_bg(slide)
-    add_title(slide, "EPI Cluster Tool 调度仿真系统", Inches(1.8), Pt(36), CYAN)
+    add_title(slide, "Cluster Tool 调度仿真系统", Inches(1.8), Pt(36), CYAN)
     add_subtitle(slide, "半导体外延生长集群设备 · 晶圆调度优化与全流程仿真", Inches(2.7), Pt(16), GRAY)
 
     txBox = slide.shapes.add_textbox(Inches(1.5), Inches(3.5), Inches(7), Inches(1.5))
@@ -226,7 +226,7 @@ def main():
     add_section_header(slide, "01", "项目概述与目标")
     add_body(slide, [
         "📌 项目目标",
-        "  • 完整模拟 EPI Cluster Tool（外延生长集群设备）的晶圆流转全流程",
+        "  • 完整模拟 Cluster Tool（外延生长集群设备）的晶圆流转全流程",
         "  • 优化调度策略，在满足所有工艺约束的前提下最大化晶圆产出（WPH）",
         "  • 纯配置驱动，所有设备/工艺/维护参数均可通过 JSON 文件调整",
         "",
@@ -570,7 +570,7 @@ def main():
 
     add_body(slide, [
         "✅ 已完成功能",
-        "  • 完整的 EPI Cluster Tool 离散事件仿真调度引擎（~1400 行核心代码）",
+        "  • 完整的 Cluster Tool 离散事件仿真调度引擎（~1400 行核心代码）",
         "  • 双槽位 PT + CoolingStation 冷却逻辑 + 通道分离策略",
         "  • 时间感知前瞻死锁预防（三层防护：Stagger / EPI 容量 / PT 前向压力）",
         "  • AM 完整集成（OnLoadClean + 1X Clean + IdlePurge，状态/甘特图区分）",

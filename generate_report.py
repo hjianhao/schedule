@@ -665,7 +665,7 @@ function showWaferHistory() {{
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>EPI Cluster Tool 模拟报告</title>
+<title>Cluster Tool 模拟报告</title>
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
 body{{font-family:Segoe UI,Microsoft YaHei,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:20px}}
@@ -714,7 +714,7 @@ footer{{text-align:center;color:#555;margin-top:36px;font-size:11px}}
 </style>
 </head>
 <body>
-<h1>EPI Cluster Tool 模拟报告</h1>
+<h1>Cluster Tool 模拟报告</h1>
 <p class="subtitle">设备: {device['equipmentName']} ({device['equipmentId']}) | 模拟时长: {format_time(sim_time)} | 状态: {state['status']}</p>
 
 <h2>核心指标</h2>
