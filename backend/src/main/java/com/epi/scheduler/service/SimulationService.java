@@ -89,6 +89,9 @@ public class SimulationService {
     public void reloadAndReset() throws Exception {
         configService.reloadConfigs();
         engine = new SchedulerEngine(configService.getDeviceConfig(), configService.getScheduleConfig());
+        engine.setAmConfig(configService.getAmConfig());
+        simulationSpeed = configService.getScheduleConfig().getSimulation().getSpeed();
+        tickAccumulator = 0;
     }
 
     @Scheduled(fixedRate = 10)

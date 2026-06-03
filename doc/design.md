@@ -694,6 +694,7 @@ SimulationSnapshot {
 | 机械手不可见 | 采样间隔 100s 太长(机械手动作 11-17s)，布局不匹配 | 降为 10s + 对齐运行界面 SVG 布局 |
 | Clean→Process gap 大且不一致 (73-135s) | (1) 固定 stagger 不区分腔室相位偏移 (2) 等待清洁完成后才启动传输 | (1) Per-Chamber 动态时序 (2) Clean-Transport 重叠优化 |
 | dwellSafetyMarginSec=40 过于保守 | EPI 实际波动仅 3s，40s 裕度过大导致不必要的等待 | 降至 10s，增大了 canPullWaferFromLL/canMovePCToPT 的准入窗口 |
+| `checkMaxDwellTimes()` PreClean 误用 EPI MaxDwell | `recipeKey = "EPI"` 死赋值覆盖 `PRECLEAN` 分支 | 移除死赋值，统一使用 `recipeKey = c.type` |
 
 ---
 

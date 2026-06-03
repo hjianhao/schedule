@@ -4,6 +4,12 @@
 
 ---
 
+# schedule.json — 工艺参数与调度配置
+
+定义各腔室的工艺 recipe、调度策略参数、时序参数、模拟参数。
+
+---
+
 ## recipes — 工艺 Recipe
 
 每个 recipe 以腔室类型为键名。调度器通过 `type` 字段匹配腔室。
@@ -97,7 +103,7 @@ interval = EPI_avgProcessTimeSec / EPI_chamber_count
   "targetWPH": 10,
   "maxWafersInSystem": 12,
   "waferStartIntervalSec": 0,
-  "dwellSafetyMarginSec": 40
+  "dwellSafetyMarginSec": 10
 }
 ```
 
@@ -147,6 +153,45 @@ interval = EPI_avgProcessTimeSec / EPI_chamber_count
 
 ---
 
+## 额外字段（遗留/保留）
+
+以下字段存在于配置文件中，当前调度引擎未直接使用，保留以兼容未来扩展：
+
+### waferFlow
+
+Wafer 流经工站的顺序列表，文档用途。引擎实际使用 `sequence.json` 中的 `flow` 步骤定义 wafer 流转。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `waferFlow` | array | 否 | Wafer 流经工站名称数组，按处理顺序排列 |
+
+示例：
+```json
+"waferFlow": ["FOUP", "LOADLOCK", "PRECLEAN", "PASSTHROUGH_FWD", "EPI", "PASSTHROUGH_RET", "LOADLOCK_RET", "FOUP_RET"]
+```
+
+### robot — 机械手策略配置
+
+机械手调度策略配置，当前引擎未使用。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `robot` | object | 否 | 机械手策略配置 |
+| `robot.strategy` | string | 否 | 策略名称，预留 |
+| `robot.swapEnabled` | boolean | 否 | 是否启用 swap 交换操作，当前仅支持 `false` |
+| `robot.priorityReturnWafer` | boolean | 否 | 是否优先返回已完成 wafer |
+
+示例：
+```json
+"robot": {
+  "strategy": "SEQUENTIAL",
+  "swapEnabled": false,
+  "priorityReturnWafer": true
+}
+```
+
+---
+
 ## 完整示例
 
 ```json
@@ -178,7 +223,7 @@ interval = EPI_avgProcessTimeSec / EPI_chamber_count
     "targetWPH": 10,
     "maxWafersInSystem": 12,
     "waferStartIntervalSec": 0,
-    "dwellSafetyMarginSec": 40
+    "dwellSafetyMarginSec": 10
   },
   "timing": {
     "loadlockPumpTimeSec": 126,
@@ -187,6 +232,12 @@ interval = EPI_avgProcessTimeSec / EPI_chamber_count
     "loadlockUnloadTimeSec": 5,
     "passthroughTransferTimeSec": 3,
     "coolingStationCoolTimeSec": 60
+  },
+  "waferFlow": ["FOUP", "LOADLOCK", "PRECLEAN", "PASSTHROUGH_FWD", "EPI", "PASSTHROUGH_RET", "LOADLOCK_RET", "FOUP_RET"],
+  "robot": {
+    "strategy": "SEQUENTIAL",
+    "swapEnabled": false,
+    "priorityReturnWafer": true
   },
   "simulation": {
     "speed": 15,
